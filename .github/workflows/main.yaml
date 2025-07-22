@@ -266,19 +266,7 @@ jobs:
             kv/data/common docker_key;
             kv/data/common docker_host;
             kv/data/${{ needs.env-vars.outputs.basename }}/${{ needs.env-vars.outputs.env }} DEPLOY_URL;
-            kv/data/${{ needs.env-vars.outputs.basename }}/${{ needs.env-vars.outputs.env }} PUBLIC_EKORRE;
-            kv/data/${{ needs.env-vars.outputs.basename }}/${{ needs.env-vars.outputs.env }} PUBLIC_AUTH_URL;
-            kv/data/${{ needs.env-vars.outputs.basename }}/${{ needs.env-vars.outputs.env }} PUBLIC_ENV;
-            kv/data/${{ needs.env-vars.outputs.basename }}/${{ needs.env-vars.outputs.env }} PUBLIC_TURNSTILE_SITE_KEY;
-            kv/data/${{ needs.env-vars.outputs.basename }}/${{ needs.env-vars.outputs.env }} TURNSTILE_SECRET_KEY;
-            kv/data/${{ needs.env-vars.outputs.basename }}/${{ needs.env-vars.outputs.env }} PUBLIC_LED_API;
-            kv/data/${{ needs.env-vars.outputs.basename }}/${{ needs.env-vars.outputs.env }} PUBLIC_LED_API_KEY;
-            kv/data/${{ needs.env-vars.outputs.basename }}/${{ needs.env-vars.outputs.env }} EXPO_ACCESS_TOKEN;
-            kv/data/${{ needs.env-vars.outputs.basename }}/${{ needs.env-vars.outputs.env }} DATABASE_URL;
-            kv/data/${{ needs.env-vars.outputs.basename }}/${{ needs.env-vars.outputs.env }} AUTH_URL;
-            kv/data/${{ needs.env-vars.outputs.basename }}/${{ needs.env-vars.outputs.env }} API_KEY;
-            kv/data/${{ needs.env-vars.outputs.basename }}/${{ needs.env-vars.outputs.env }} API_TOKEN;
-            kv/data/${{ needs.env-vars.outputs.basename }}/${{ needs.env-vars.outputs.env }} API_URL;
+            kv/data/${{ needs.env-vars.outputs.basename }}/${{ needs.env-vars.outputs.env }} *;
       - name: set variables
         run: |
           echo "IMAGE_NAME=${{ needs.env-vars.outputs.image_name }}" >> $GITHUB_ENV
