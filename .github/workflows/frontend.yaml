@@ -58,12 +58,10 @@ jobs:
           TAG=$(echo "$TAG" | slugify)
           export IMAGE_NAME="${{ env.REGISTRY }}/${{ github.repository }}:$TAG"
 
-          echo "::echo::on"
-          echo "::set-output name=image_name::$IMAGE_NAME"
-          echo "::set-output name=tag::$TAG"
-          echo "::set-output name=basename::$(basename ${{ github.repository }} | slugify)"
-          echo "::set-output name=branch::$( echo $BRANCH | slugify)"
-          echo "::echo::off"
+          echo "image_name=$IMAGE_NAME" >> $GITHUB_OUTPUT
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "basename=$(basename ${{ github.repository }} | slugify)" >> $GITHUB_OUTPUT
+          echo "branch=$( echo $BRANCH | slugify)" >> $GITHUB_OUTPUT
       - name: select environment
         id: env
         run: |
@@ -90,11 +88,9 @@ jobs:
             PROJECT_NAME=$PROJ_BASE-$BRANCH
           fi
 
-          echo "::echo::on"
-          echo "::set-output name=env::$ENV"
-          echo "::set-output name=project_name::$PROJECT_NAME"
-          echo "::set-output name=deploy_env::$DEPLOY_ENV"
-          echo "::echo::off"
+          echo "env=$ENV" >> $GITHUB_OUTPUT
+          echo "project_name=$PROJECT_NAME" >> $GITHUB_OUTPUT
+          echo "deploy_env==$DEPLOY_ENV" >> $GITHUB_OUTPUT
     outputs:
       image_name: ${{ steps.vars.outputs.image_name }}
       tag: ${{ steps.vars.outputs.tag }}
@@ -249,7 +245,6 @@ jobs:
         with:
           step: start
           token: ${{ secrets.GITHUB_TOKEN }}
-          override: true
           env: ${{ env.DEPLOY_ENV }}
       - name: login to host
         uses: blennster/setup-docker-remote-tls@v4
@@ -289,6 +284,7 @@ jobs:
         if: ${{ always() && !env.ACT && github.event_name != 'pull_request' && needs.env-vars.outputs.env != 'review' }}
         with:
           step: finish
+          auto_inactive: true
           token: ${{ secrets.GITHUB_TOKEN }}
           status: ${{ job.status }}
           env: ${{ steps.deployment.outputs.env }}
