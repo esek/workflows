@@ -121,7 +121,7 @@ jobs:
     steps:
       - name: import secrets
         id: s
-        uses: hashicorp/vault-action@v2.4.1
+        uses: hashicorp/vault-action@v3.4.0
         with:
           url: ${{ secrets.VAULT_URL }}
           token: ${{ secrets.VAULT_TOKEN }}
@@ -135,15 +135,15 @@ jobs:
         with:
           install: true
       - name: checkout repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: login to registry
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ steps.s.outputs.registry_username }}
           password: ${{ steps.s.outputs.registry_password }}
       - name: build and push image
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v6
         with:
           context: .
           push: true
@@ -160,7 +160,7 @@ jobs:
     container: node:16-alpine
     steps:
       - name: checkout repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: install deps
         run: yarn install --frozen-lockfile
       - name: lint
@@ -190,7 +190,7 @@ jobs:
       - name: add bash (needed for actions)
         run: apk add --no-cache bash
       - name: checkout repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: setup env
         run: |
          mv .env.example .env
@@ -280,7 +280,7 @@ jobs:
             echo "DEPLOY_URL=${{ needs.env-vars.outputs.branch }}-${{ needs.env-vars.outputs.basename }}.review.esek.se" >> $GITHUB_ENV
           fi
       - name: checkout repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: start deployment
         uses: bobheadxi/deployments@v1
         id: deployment
@@ -302,7 +302,7 @@ jobs:
           docker info
           docker compose version
       - name: login to registry
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ steps.s.outputs.registry_username }}
@@ -347,7 +347,7 @@ jobs:
     steps:
       - name: import secrets
         id: s
-        uses: hashicorp/vault-action@v2.4.1
+        uses: hashicorp/vault-action@v3.4.0
         with:
           url: ${{ secrets.VAULT_URL }}
           token: ${{ secrets.VAULT_TOKEN }}
@@ -370,7 +370,7 @@ jobs:
           docker info
           docker compose version
       - name: checkout repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: stop container
         run: |
           docker compose -f docker-compose.ci.yml -p ${{ needs.env-vars.outputs.project_name }} down 2> /dev/null || true
