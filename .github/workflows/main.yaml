@@ -38,6 +38,9 @@ on:
       emmech_quirk:
         type: boolean
         required: false
+      bingo_quirk:
+        type: boolean
+        required: false
 
 env:
   REGISTRY: registry.esek.se
@@ -156,7 +159,7 @@ jobs:
           username: ${{ steps.s.outputs.registry_username }}
           password: ${{ steps.s.outputs.registry_password }}
       - name: build and push image
-        if: ${{ !inputs.fe_and_be && !inputs.emmech_quirk }}
+        if: ${{ !inputs.fe_and_be && !inputs.emmech_quirk && !inputs.bingo_quirk }}
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -165,6 +168,15 @@ jobs:
             PUBLIC_API_URL=https://${{ steps.s.outputs.DEPLOY_URL }}/api
             API_URL=${{ steps.s.outputs.API_URL }}
             API_TOKEN=${{ steps.s.outputs.API_TOKEN }}
+          tags: ${{ needs.env-vars.outputs.image_name }}
+      - name: build and push image
+        if: ${{ inputs.bingo_quirk }}
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          build-args: |
+            PUBLIC_API_URL=https://${{ steps.s.outputs.DEPLOY_URL }}
           tags: ${{ needs.env-vars.outputs.image_name }}
       - name: build and push frontend image
         if: ${{ inputs.fe_and_be }}
