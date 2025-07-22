@@ -11,6 +11,16 @@ name: Frontend Docker Image CI
 
 on:
   workflow_call:
+    inputs:
+      ekorre:
+        type: boolean
+        required: false
+      extended_testing:
+        type: boolean
+        required: false
+      disable_testing:
+        type: boolean
+        required: false
 
 env:
   REGISTRY: registry.esek.se
@@ -58,10 +68,12 @@ jobs:
           TAG=$(echo "$TAG" | slugify)
           export IMAGE_NAME="${{ env.REGISTRY }}/${{ github.repository }}:$TAG"
 
-          echo "image_name=$IMAGE_NAME" >> $GITHUB_OUTPUT
-          echo "tag=$TAG" >> $GITHUB_OUTPUT
-          echo "basename=$(basename ${{ github.repository }} | slugify)" >> $GITHUB_OUTPUT
-          echo "branch=$( echo $BRANCH | slugify)" >> $GITHUB_OUTPUT
+          echo "::echo::on"
+          echo "::set-output name=image_name::$IMAGE_NAME"
+          echo "::set-output name=tag::$TAG"
+          echo "::set-output name=basename::$(basename ${{ github.repository }} | slugify)"
+          echo "::set-output name=branch::$( echo $BRANCH | slugify)"
+          echo "::echo::off"
       - name: select environment
         id: env
         run: |
@@ -88,9 +100,11 @@ jobs:
             PROJECT_NAME=$PROJ_BASE-$BRANCH
           fi
 
-          echo "env=$ENV" >> $GITHUB_OUTPUT
-          echo "project_name=$PROJECT_NAME" >> $GITHUB_OUTPUT
-          echo "deploy_env==$DEPLOY_ENV" >> $GITHUB_OUTPUT
+          echo "::echo::on"
+          echo "::set-output name=env::$ENV"
+          echo "::set-output name=project_name::$PROJECT_NAME"
+          echo "::set-output name=deploy_env::$DEPLOY_ENV"
+          echo "::echo::off"
     outputs:
       image_name: ${{ steps.vars.outputs.image_name }}
       tag: ${{ steps.vars.outputs.tag }}
@@ -116,6 +130,7 @@ jobs:
           secrets: |
             kv/data/common registry_username;
             kv/data/common registry_password;
+            kv/data/${{ needs.env-vars.outputs.basename }}/${{ needs.env-vars.outputs.env }} DEPLOY_URL;
       - name: setup buildx
         uses: docker/setup-buildx-action@v2
         with:
@@ -133,6 +148,8 @@ jobs:
         with:
           context: .
           push: true
+          build-args: |
+            PUBLIC_API_URL=https://${{ steps.s.outputs.DEPLOY_URL }}/api
           tags: ${{ needs.env-vars.outputs.image_name }}
 
   # This should need build and use the image to test
@@ -140,8 +157,7 @@ jobs:
     runs-on: self-hosted
     # To run this locally using act set act to false in event.json
     # Note act does not support services...
-    # disable
-    if: ${{ true && !(github.event_name == 'pull_request' && github.event.action == 'closed') }}
+    if: ${{ !inputs.extended_testing && !inputs.disable_testing && !(github.event_name == 'pull_request' && github.event.action == 'closed') }}
     container: node:16-alpine
     steps:
       - name: checkout repo
@@ -158,40 +174,74 @@ jobs:
         with:
           repo-token: '${{ secrets.GITHUB_TOKEN }}'
           only-pr-files: false
-      # - name: run test
-      #   continue-on-error: ${{ github.event_name == 'pull_request' }}
-      #   run: npm run test -- --ci --testLocationInResults --json --coverage --outputFile="report.json"
-      # - name: find pr
-      #   continue-on-error: true
-      #   if: ${{ !env.ACT && github.event_name == 'pull_request' }}
-      #   uses: jwalton/gh-find-current-pr@v1
-      #   id: findPr
-      # - name: publish coverage
-      #   continue-on-error: true
-      #   if: ${{ !env.ACT && github.event_name == 'pull_request' }}
-      #   uses: ArtiomTr/jest-coverage-report-action@v2.0.9
-      #   with:
-      #     skip-step: all
-      #     coverage-file: report.json
-      #     base-coverage-file: report.json
-      #     prnumber: ${{ steps.findPr.outputs.number }}
-      #     annotations: failed-tests
-      # - name: check changelog
-      #   if: ${{ !env.ACT && github.event_name == 'pull_request' }}
-      #   uses: Zomzog/changelog-checker@v1.2.0
-      #   continue-on-error: true
-      #   with:
-      #     fileName: CHANGELOG.MD
-      #   env:
-      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      # - name: check package.json
-      #   if: ${{ !env.ACT && github.event_name == 'pull_request' }}
-      #   uses: Zomzog/changelog-checker@v1.2.0
-      #   continue-on-error: true
-      #   with:
-      #     fileName: package.json
-      #   env:
-      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  test_extended:
+    runs-on: self-hosted
+    # To run this locally using act set act to false in event.json
+    # Note act does not support services...
+    if: ${{ inputs.extended_testing && !inputs.disable_testing && github.event_name == 'pull_request' && github.event.action != 'closed' }}
+    services:
+      postgres:
+        image: postgres:alpine
+        env:
+         POSTGRES_USER: postgres
+         POSTGRES_PASSWORD: password
+         POSTGRES_DB: ekorre_foot
+    container: node:16-alpine
+    steps:
+      - name: add bash (needed for actions)
+        run: apk add --no-cache bash
+      - name: checkout repo
+        uses: actions/checkout@v3
+      - name: setup env
+        run: |
+         mv .env.example .env
+         sed -i 's/localhost/postgres/' .env
+      - name: install deps
+        id: npmci
+        run: npm ci
+      - name: lint
+        if: ${{ steps.npmci.outcome == 'success' && always() }}
+        run: npm run lint -- --output-file eslint_report.json --format json
+      - name: publish lint
+        if: ${{ !env.ACT && steps.npmci.outcome == 'success' && always() }}
+        uses: ataylorme/eslint-annotate-action@v2
+        with:
+          repo-token: "${{ secrets.GITHUB_TOKEN }}"
+          only-pr-files: false
+      - name: reset db
+        id: dbreset
+        if: ${{ steps.npmci.outcome == 'success' && always() }}
+        run: npm run prisma:ci
+      - name: run test
+        if: ${{ steps.dbreset.outcome == 'success' && always() }}
+        run: npm run test:prebuild -- --ci --testLocationInResults --json --coverage --outputFile="report.json"
+      - name: find pr
+        if: ${{ !env.ACT && steps.dbreset.outcome == 'success' && always() }}
+        uses: jwalton/gh-find-current-pr@v1
+        id: findPr
+      - name: publish coverage
+        if: ${{ !env.ACT && steps.dbreset.outcome == 'success' && always() }}
+        uses: ArtiomTr/jest-coverage-report-action@v2.0.9
+        with:
+          skip-step: all
+          coverage-file: report.json
+          base-coverage-file: report.json
+          prnumber: ${{ steps.findPr.outputs.number }}
+          annotations: failed-tests
+      - name: check changelog
+        uses: Zomzog/changelog-checker@v1.2.0
+        if: ${{ !env.ACT && always() }}
+        with:
+          fileName: CHANGELOG.MD
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: check package.json
+        if: ${{ !env.ACT && always() }}
+        uses: Zomzog/changelog-checker@v1.2.0
+        with:
+          fileName: package.json
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   deploy:
     # To run this locally using act set act to false in event.json
@@ -224,6 +274,10 @@ jobs:
             kv/data/${{ needs.env-vars.outputs.basename }}/${{ needs.env-vars.outputs.env }} TURNSTILE_SECRET_KEY;
             kv/data/${{ needs.env-vars.outputs.basename }}/${{ needs.env-vars.outputs.env }} PUBLIC_LED_API;
             kv/data/${{ needs.env-vars.outputs.basename }}/${{ needs.env-vars.outputs.env }} PUBLIC_LED_API_KEY;
+            kv/data/${{ needs.env-vars.outputs.basename }}/${{ needs.env-vars.outputs.env }} EXPO_ACCESS_TOKEN;
+            kv/data/${{ needs.env-vars.outputs.basename }}/${{ needs.env-vars.outputs.env }} DATABASE_URL;
+            kv/data/${{ needs.env-vars.outputs.basename }}/${{ needs.env-vars.outputs.env }} AUTH_URL;
+            kv/data/${{ needs.env-vars.outputs.basename }}/${{ needs.env-vars.outputs.env }} API_KEY;
       - name: set variables
         run: |
           echo "IMAGE_NAME=${{ needs.env-vars.outputs.image_name }}" >> $GITHUB_ENV
@@ -245,6 +299,7 @@ jobs:
         with:
           step: start
           token: ${{ secrets.GITHUB_TOKEN }}
+          override: true
           env: ${{ env.DEPLOY_ENV }}
       - name: login to host
         uses: blennster/setup-docker-remote-tls@v4
@@ -284,7 +339,6 @@ jobs:
         if: ${{ always() && !env.ACT && github.event_name != 'pull_request' && needs.env-vars.outputs.env != 'review' }}
         with:
           step: finish
-          auto_inactive: true
           token: ${{ secrets.GITHUB_TOKEN }}
           status: ${{ job.status }}
           env: ${{ steps.deployment.outputs.env }}
