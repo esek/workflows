@@ -21,6 +21,9 @@ on:
       disable_testing:
         type: boolean
         required: false
+      only_prod:
+        type: boolean
+        required: false
 
 env:
   REGISTRY: registry.esek.se
@@ -54,7 +57,7 @@ jobs:
           fi
           echo "Running on $BRANCH"
 
-          export TAG=ephermal
+          export TAG=ephemeral
 
           if [ "$BRANCH" = "${{ env.DEFAULT_BRANCH }}" ]; then
             TAG=latest
@@ -68,12 +71,10 @@ jobs:
           TAG=$(echo "$TAG" | slugify)
           export IMAGE_NAME="${{ env.REGISTRY }}/${{ github.repository }}:$TAG"
 
-          echo "::echo::on"
-          echo "::set-output name=image_name::$IMAGE_NAME"
-          echo "::set-output name=tag::$TAG"
-          echo "::set-output name=basename::$(basename ${{ github.repository }} | slugify)"
-          echo "::set-output name=branch::$( echo $BRANCH | slugify)"
-          echo "::echo::off"
+          echo "image_name=$IMAGE_NAME" >> $GITHUB_OUTPUT
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "basename=$(basename ${{ github.repository }} | slugify)" >> $GITHUB_OUTPUT
+          echo "branch=$( echo $BRANCH | slugify)" >> $GITHUB_OUTPUT
       - name: select environment
         id: env
         run: |
@@ -84,7 +85,7 @@ jobs:
           export BRANCH=${{ steps.vars.outputs.branch }}
           export PROJECT_NAME=$PROJ_BASE-testing
 
-          if ${{ (github.event_name == 'release' && github.event.action == 'released') || env.ONLY_PROD == 'true' }}; then
+          if ${{ (github.event_name == 'release' && github.event.action == 'released') || env.ONLY_PROD == 'true' || inputs.only_prod }}; then
             ENV=production
             DEPLOY_ENV=$ENV
             PROJECT_NAME=$PROJ_BASE-production
@@ -100,11 +101,9 @@ jobs:
             PROJECT_NAME=$PROJ_BASE-$BRANCH
           fi
 
-          echo "::echo::on"
-          echo "::set-output name=env::$ENV"
-          echo "::set-output name=project_name::$PROJECT_NAME"
-          echo "::set-output name=deploy_env::$DEPLOY_ENV"
-          echo "::echo::off"
+          echo "env=$ENV" >> $GITHUB_OUTPUT
+          echo "project_name=$PROJECT_NAME" >> $GITHUB_OUTPUT
+          echo "deploy_env=$DEPLOY_ENV" >> $GITHUB_OUTPUT
     outputs:
       image_name: ${{ steps.vars.outputs.image_name }}
       tag: ${{ steps.vars.outputs.tag }}
