@@ -24,6 +24,9 @@ on:
       only_prod:
         type: boolean
         required: false
+      unlimited_service_deploy:
+        type: boolean
+        required: false
 
 env:
   REGISTRY: registry.esek.se
@@ -313,6 +316,7 @@ jobs:
         run: |
           docker compose -f docker-compose.ci.yml -p $PROJECT_NAME down
       - name: deploy to host
+        if: ${{ !inputs.unlimited_service_deploy }}
         shell: bash
         run: |
           if [[ "$ENV" = "production" || "$ENV" = "staging" ]]; then
@@ -320,6 +324,16 @@ jobs:
           fi
           if [[ "$ENV" = "review" || "$ENV" = "testing" ]]; then
             docker compose -f docker-compose.ci.yml -p $PROJECT_NAME up -d --force-recreate ${{ needs.env-vars.outputs.basename }}
+          fi
+      - name: deploy to host (unlimited service mode)
+        if: ${{ inputs.unlimited_service_deploy }}
+        shell: bash
+        run: |
+          if [[ "$ENV" = "production" || "$ENV" = "staging" ]]; then
+            docker compose -f docker-compose.ci.yml -f docker-compose.prod.yml -p $PROJECT_NAME up -d --force-recreate
+          fi
+          if [[ "$ENV" = "review" || "$ENV" = "testing" ]]; then
+            docker compose -f docker-compose.ci.yml -p $PROJECT_NAME up -d --force-recreate
           fi
       - name: prune system
         run: docker system prune -f 2> /dev/null || true
