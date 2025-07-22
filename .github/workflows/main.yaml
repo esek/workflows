@@ -34,7 +34,6 @@ on:
 env:
   REGISTRY: registry.esek.se
   DEFAULT_BRANCH: main
-  ONLY_PROD: false
 
 jobs:
   # This can only contain env vars and not secrets since actions is a fussy about it
@@ -91,7 +90,7 @@ jobs:
           export BRANCH=${{ steps.vars.outputs.branch }}
           export PROJECT_NAME=$PROJ_BASE-testing
 
-          if ${{ (github.event_name == 'release' && github.event.action == 'released') || env.ONLY_PROD == 'true' || inputs.only_prod }}; then
+          if ${{ (github.event_name == 'release' && github.event.action == 'released') || inputs.only_prod }}; then
             ENV=production
             DEPLOY_ENV=$ENV
             PROJECT_NAME=$PROJ_BASE-production
@@ -331,7 +330,7 @@ jobs:
           username: ${{ steps.s.outputs.registry_username }}
           password: ${{ steps.s.outputs.registry_password }}
       - name: pull image
-        run: echo $IMAGE_NAME; docker pull $IMAGE_NAME
+        run: echo $IMAGE_NAME; docker compose -f docker-compose.ci.yml pull || docker pull $IMAGE_NAME
       - name: Stop old container
         run: |
           docker compose -f docker-compose.ci.yml -p $PROJECT_NAME down
