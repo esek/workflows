@@ -277,6 +277,8 @@ jobs:
             kv/data/${{ needs.env-vars.outputs.basename }}/${{ needs.env-vars.outputs.env }} DATABASE_URL;
             kv/data/${{ needs.env-vars.outputs.basename }}/${{ needs.env-vars.outputs.env }} AUTH_URL;
             kv/data/${{ needs.env-vars.outputs.basename }}/${{ needs.env-vars.outputs.env }} API_KEY;
+            kv/data/${{ needs.env-vars.outputs.basename }}/${{ needs.env-vars.outputs.env }} API_TOKEN;
+            kv/data/${{ needs.env-vars.outputs.basename }}/${{ needs.env-vars.outputs.env }} API_URL;
       - name: set variables
         run: |
           echo "IMAGE_NAME=${{ needs.env-vars.outputs.image_name }}" >> $GITHUB_ENV
