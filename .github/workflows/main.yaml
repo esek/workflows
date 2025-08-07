@@ -63,7 +63,9 @@ jobs:
             | tr "[:upper:]" "[:lower:]"
           }
 
-          echo ${{ github.event }}
+          echo ${{ github.event.action }}
+          echo ${{ github.event_name }}
+          echo ${{ github.ref_type }}
 
           export BRANCH=
           if [ -z $GITHUB_HEAD_REF ]; then
