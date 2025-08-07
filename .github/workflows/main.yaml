@@ -12,6 +12,11 @@ name: Frontend Docker Image CI
 on:
   workflow_call:
     inputs:
+      default_branch:
+        description: 'Default branch, used for auto-releasing on new commits.'
+        type: string
+        default: 'main'
+        required: false
       # ekorre testing
       # normal testing is just for efterphest
       extended_testing:
@@ -44,7 +49,6 @@ on:
 
 env:
   REGISTRY: registry.esek.se
-  DEFAULT_BRANCH: main
 
 jobs:
   # This can only contain env vars and not secrets since actions is a fussy about it
@@ -77,13 +81,13 @@ jobs:
 
           export TAG=ephemeral
 
-          if [ "$BRANCH" = "${{ env.DEFAULT_BRANCH }}" ]; then
+          if [ "$BRANCH" = "${{ inputs.default_branch }}" ]; then
             TAG=latest
           fi
 
           if ${{ github.ref_type == 'tag' }}; then
             TAG=$BRANCH
-            BRANCH=${{ env.DEFAULT_BRANCH }}
+            BRANCH=${{ inputs.default_branch }}
           fi
 
           TAG=$(echo "$TAG" | slugify)
