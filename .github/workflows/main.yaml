@@ -377,7 +377,7 @@ jobs:
         run: echo $IMAGE_NAME; docker compose -f docker-compose.ci.yml pull || docker pull $IMAGE_NAME
       - name: Stop old container
         run: |
-          docker compose -f docker-compose.ci.yml -p $PROJECT_NAME down
+          docker compose -f docker-compose.ci.yml -p $PROJECT_NAME down --remove-orphans
       - name: deploy to host
         if: ${{ !inputs.unlimited_service_deploy }}
         shell: bash
