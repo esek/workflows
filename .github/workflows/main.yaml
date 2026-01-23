@@ -17,11 +17,7 @@ on:
         type: string
         default: 'main'
         required: false
-      # ekorre testing
-      # normal testing is just for efterphest
-      extended_testing:
-        type: boolean
-        required: false
+      # kept for backwards-compatibility. Doesn't do anything, since it's off by default
       disable_testing:
         type: boolean
         required: false
@@ -32,6 +28,9 @@ on:
         type: boolean
         required: false
       fe_and_be:
+        type: boolean
+        required: false
+      efterphest_quirk:
         type: boolean
         required: false
       ekorre_quirk:
@@ -218,7 +217,7 @@ jobs:
     runs-on: self-hosted
     # To run this locally using act set act to false in event.json
     # Note act does not support services...
-    if: ${{ !inputs.extended_testing && !inputs.disable_testing && !(github.event_name == 'pull_request' && github.event.action == 'closed') }}
+    if: ${{ inputs.efterphest_quirk && !(github.event_name == 'pull_request' && github.event.action == 'closed') }}
     container: node:16-alpine
     steps:
       - name: checkout repo
@@ -240,7 +239,7 @@ jobs:
     runs-on: self-hosted
     # To run this locally using act set act to false in event.json
     # Note act does not support services...
-    if: ${{ inputs.extended_testing && !inputs.disable_testing && github.event_name == 'pull_request' && github.event.action != 'closed' }}
+    if: ${{ inputs.ekorre_quirk && github.event_name == 'pull_request' && github.event.action != 'closed' }}
     services:
       postgres:
         image: postgres:alpine
@@ -258,6 +257,7 @@ jobs:
         run: |
          mv .env.example .env
          sed -i 's/localhost/postgres/' .env
+         sed -i 's/SKIP_ACCESS_CHECKS=true/SKIP_ACCESS_CHECKS=false/' .env
       - name: install deps
         id: npmci
         run: npm ci
