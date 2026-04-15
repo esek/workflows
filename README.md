@@ -3,6 +3,8 @@ needs to deploy.
 
 The CI uses org secrets to access the [vault](https://vault.esek.se).
 
+A more in depth guide to the setup of a new workflow can be found in the ddg-wiki. [esek/ddgwiki/infrastructure/ci_cd.md](https://github.com/esek/ddgwiki/blob/main/infrastructure/ci_cd.md)
+
 ## Example usage
 
 ```yaml
