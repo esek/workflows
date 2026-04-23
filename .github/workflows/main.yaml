@@ -184,14 +184,14 @@ jobs:
         if: ${{ inputs.fe_and_be }}
         uses: docker/build-push-action@v6
         with:
-          context: frontend
+          context: .
           push: true
           tags: ${{ needs.env-vars.outputs.image_name }}-fe
       - name: build and push backend image
         if: ${{ inputs.fe_and_be }}
         uses: docker/build-push-action@v6
         with:
-          context: backend
+          context: .
           push: true
           tags: ${{ needs.env-vars.outputs.image_name }}-be
       - name: build and push server image
