@@ -155,7 +155,7 @@ jobs:
       - name: checkout repo
         uses: actions/checkout@v4
       - name: login to registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ steps.s.outputs.registry_username }}
@@ -365,7 +365,7 @@ jobs:
           docker info
           docker compose version
       - name: login to registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ steps.s.outputs.registry_username }}
