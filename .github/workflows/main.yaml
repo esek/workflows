@@ -218,7 +218,8 @@ jobs:
     # To run this locally using act set act to false in event.json
     # Note act does not support services...
     if: ${{ inputs.efterphest_quirk && !(github.event_name == 'pull_request' && github.event.action == 'closed') }}
-    container: node:lts-alpine
+    # Pinned: node:lts moved to a release without yarn
+    container: node:24-alpine
     steps:
       - name: checkout repo
         uses: actions/checkout@v4
