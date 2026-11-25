@@ -456,11 +456,23 @@ jobs:
       - name: stop container
         # The compose files use `image: $IMAGE_NAME`; without it compose refuses to
         # load the project and `down` removes nothing.
+        # `-v` also drops the review deploy's volumes (e.g. ekorre's postgres data).
+        # Review projects are named <repo>-<branch>, so a branch named like a real
+        # environment would point at that environment's project; refuse those.
         env:
           IMAGE_NAME: ${{ needs.env-vars.outputs.image_name }}
           COMPOSE_PROJECT_NAME: ${{ needs.env-vars.outputs.project_name }}
+          BRANCH: ${{ needs.env-vars.outputs.branch }}
+          DEFAULT_BRANCH: ${{ inputs.default_branch }}
+        shell: bash
         run: |
-          docker compose -f docker-compose.ci.yml -p "$COMPOSE_PROJECT_NAME" down --remove-orphans
+          case "$BRANCH" in
+            testing|staging|production|"$DEFAULT_BRANCH")
+              echo "::error::Refusing to tear down $COMPOSE_PROJECT_NAME: branch '$BRANCH' shares its name with a real environment"
+              exit 1
+              ;;
+          esac
+          docker compose -f docker-compose.ci.yml -p "$COMPOSE_PROJECT_NAME" down --remove-orphans -v
       - if: ${{ !env.ACT && github.actor != 'dependabot[bot]' }}
         name: comment deployment url to pr
         uses: mshick/add-pr-comment@v1
