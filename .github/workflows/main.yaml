@@ -454,8 +454,13 @@ jobs:
       - name: checkout repo
         uses: actions/checkout@v4
       - name: stop container
+        # The compose files use `image: $IMAGE_NAME`; without it compose refuses to
+        # load the project and `down` removes nothing.
+        env:
+          IMAGE_NAME: ${{ needs.env-vars.outputs.image_name }}
+          COMPOSE_PROJECT_NAME: ${{ needs.env-vars.outputs.project_name }}
         run: |
-          docker compose -f docker-compose.ci.yml -p ${{ needs.env-vars.outputs.project_name }} down --remove-orphans 2> /dev/null || true
+          docker compose -f docker-compose.ci.yml -p "$COMPOSE_PROJECT_NAME" down --remove-orphans
       - if: ${{ !env.ACT && github.actor != 'dependabot[bot]' }}
         name: comment deployment url to pr
         uses: mshick/add-pr-comment@v1
