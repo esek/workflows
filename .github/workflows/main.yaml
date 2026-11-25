@@ -46,6 +46,13 @@ on:
 env:
   REGISTRY: registry.esek.se
 
+# One run at a time per PR: closing a PR cancels its still-running deploy before
+# teardown starts, so the deploy can't bring the containers back afterwards.
+# Pushes and releases get a unique group, so production deploys are never cancelled.
+concurrency:
+  group: ${{ github.event_name == 'pull_request' && format('review-{0}-{1}', github.repository, github.event.pull_request.number) || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
   # This can only contain env vars and not secrets since actions is a fussy about it
   env-vars:
@@ -454,8 +461,25 @@ jobs:
       - name: checkout repo
         uses: actions/checkout@v4
       - name: stop container
+        # The compose files use `image: $IMAGE_NAME`; without it compose refuses to
+        # load the project and `down` removes nothing.
+        # `-v` also drops the review deploy's volumes (e.g. ekorre's postgres data).
+        # Review projects are named <repo>-<branch>, so a branch named like a real
+        # environment would point at that environment's project; refuse those.
+        env:
+          IMAGE_NAME: ${{ needs.env-vars.outputs.image_name }}
+          COMPOSE_PROJECT_NAME: ${{ needs.env-vars.outputs.project_name }}
+          BRANCH: ${{ needs.env-vars.outputs.branch }}
+          DEFAULT_BRANCH: ${{ inputs.default_branch }}
+        shell: bash
         run: |
-          docker compose -f docker-compose.ci.yml -p ${{ needs.env-vars.outputs.project_name }} down --remove-orphans 2> /dev/null || true
+          case "$BRANCH" in
+            testing|staging|production|"$DEFAULT_BRANCH")
+              echo "::error::Refusing to tear down $COMPOSE_PROJECT_NAME: branch '$BRANCH' shares its name with a real environment"
+              exit 1
+              ;;
+          esac
+          docker compose -f docker-compose.ci.yml -p "$COMPOSE_PROJECT_NAME" down --remove-orphans -v
       - if: ${{ !env.ACT && github.actor != 'dependabot[bot]' }}
         name: comment deployment url to pr
         uses: mshick/add-pr-comment@v1
