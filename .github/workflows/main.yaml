@@ -46,6 +46,13 @@ on:
 env:
   REGISTRY: registry.esek.se
 
+# One run at a time per PR: closing a PR cancels its still-running deploy before
+# teardown starts, so the deploy can't bring the containers back afterwards.
+# Pushes and releases get a unique group, so production deploys are never cancelled.
+concurrency:
+  group: ${{ github.event_name == 'pull_request' && format('review-{0}-{1}', github.repository, github.event.pull_request.number) || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
   # This can only contain env vars and not secrets since actions is a fussy about it
   env-vars:
